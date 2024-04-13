@@ -1,41 +1,44 @@
 package consumer;
 
+import util.Point;
+
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static util.PiEstimator.estimateForPi;
 
-public class PointConsumer implements Runnable {
-    private final BlockingQueue<double[]> queue;
-    private final AtomicLong trialCount;
-    private final AtomicLong inCircleCount;
+public class PointConsumer implements Callable<Long> {
+    private final BlockingQueue<Point> queue;
 
-    public PointConsumer(
-            BlockingQueue<double[]> queue,
-            AtomicLong trialCount,
-            AtomicLong inCircleCount
-    ) {
+    public PointConsumer(BlockingQueue<Point> queue) {
         this.queue = queue;
-        this.trialCount = trialCount;
-        this.inCircleCount = inCircleCount;
     }
 
     @Override
-    public void run() {
+    public Long call() {
+        long inCircleCount = 0L,
+            i = 0L;
         while (true) {
             try {
-                double[] point = queue.take();
-                double x = point[0];
-                double y = point[1];
-                trialCount.incrementAndGet();
-                if (x*x + y*y < 1)
-                    inCircleCount.incrementAndGet();
+                Point point = queue.poll(2, TimeUnit.SECONDS);
+                if (point != null) {
+                    i++;
+//                    System.out.println("Thread: " + Thread.currentThread().getName() + ". Point " + i + " is taken from queue. Point: " + point);
+                    if (point.isInCircle()) {
+                        inCircleCount++;
+                    }
+                } else {
+                    System.out.println(
+                            "Thread: " + Thread.currentThread().getName() + ". " +
+                                    i + " points are taken from queue. " +
+                                    inCircleCount + " are in circle. Percentage for current thread: " + (double) inCircleCount / i);
+                    return inCircleCount;
+                }
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                return inCircleCount;
             }
-
-            double estimateForPi = estimateForPi(inCircleCount.get(), trialCount.get());
-            System.out.println("Estimate for Pi: " + estimateForPi);
         }
     }
 }
