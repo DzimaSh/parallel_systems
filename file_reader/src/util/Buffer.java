@@ -25,4 +25,8 @@ public class Buffer {
         available = true;
         notifyAll();
     }
+
+    public synchronized boolean isEmpty() {
+        return !available;
+    }
 }
